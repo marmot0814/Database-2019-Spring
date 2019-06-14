@@ -8,7 +8,7 @@
 #include "Util.h"
 #include "Command.h"
 #include "Table.h"
-#include "SelectState.h"
+#include "QueryState.h"
 
 ///
 /// Allocate State_t and initialize some attributes
@@ -55,35 +55,88 @@ void print_user(User_t *user, SelectArgs_t *sel_args) {
     printf(")\n");
 }
 
-///
-/// Print the users for given offset and limit restriction
-///
-void print_users(Table_t *table, int *idxList, size_t idxListLen, Command_t *cmd) {
-    size_t idx;
-    int limit = cmd->cmd_args.sel_args.limit;
-    int offset = cmd->cmd_args.sel_args.offset;
+/* operation begin */
+int equal_to            (void *patterm, void *val) { return *((int*)patterm) == atoi((char*)val); }
+int not_equal_to        (void *patterm, void *val) { return *((int*)patterm) != atoi((char*)val); }
+int greater             (void *patterm, void *val) { return *((int*)patterm) >  atoi((char*)val); }
+int less                (void *patterm, void *val) { return *((int*)patterm) <  atoi((char*)val); }
+int greater_or_equal_to (void *patterm, void *val) { return *((int*)patterm) >= atoi((char*)val); }
+int less_or_equal_to    (void *patterm, void *val) { return *((int*)patterm) <= atoi((char*)val); }
+int string_equal_to     (void *patterm, void *val) { return strcmp((char*)patterm, (char*)val) == 0; }
+int string_not_equal_to (void *patterm, void *val) { return strcmp((char*)patterm, (char*)val) != 0; }
+/* operation  end  */
 
-    if (offset == -1) {
-        offset = 0;
-    }
+///
+/// eval string condition
+///
+int eval(User_t *user, char *condition) {
+    if (strlen(condition) == 0)
+        return 1;
+    void* patterm[] = {
+        (void*)&user->id, 
+        (void*)&user->name, 
+        (void*)&user->email, 
+        (void*)&user->age
+    };
+    size_t patterm_idx;
 
-    if (idxList) {
-        for (idx = offset; idx < idxListLen; idx++) {
-            if (limit != -1 && (idx - offset) >= limit) {
-                break;
-            }
-            print_user(get_User(table, idxList[idx]), &(cmd->cmd_args.sel_args));
-        }
-    } else {
-        for (idx = offset; idx < table->len; idx++) {
-            if (limit != -1 && (idx - offset) >= limit) {
-                break;
-            }
-            print_user(get_User(table, idx), &(cmd->cmd_args.sel_args));
-        }
-    }
+    int (*op[])(void* patterm, void* val) = {
+        equal_to, 
+        not_equal_to, 
+        greater, 
+        less, 
+        greater_or_equal_to, 
+        less_or_equal_to, 
+        string_equal_to, 
+        string_not_equal_to
+    };
+    size_t op_idx = 0;
+
+    char *ptr = condition;
+         if (!strncmp(ptr, "id"   , 2)) ptr += 2, patterm_idx = ID;
+    else if (!strncmp(ptr, "name" , 4)) ptr += 4, patterm_idx = NAME;
+    else if (!strncmp(ptr, "email", 5)) ptr += 5, patterm_idx = EMAIL;
+    else if (!strncmp(ptr, "age"  , 3)) ptr += 3, patterm_idx = AGE;
+    else {};
+
+         if (!strncmp(ptr, "=" , 1)) ptr += 1, op_idx = ( patterm_idx == ID || patterm_idx == AGE ? EQUAL_TO : STRING_EQUAL_TO );
+    else if (!strncmp(ptr, "!=", 2)) ptr += 2, op_idx = ( patterm_idx == ID || patterm_idx == AGE ? NOT_EQUAL_TO : STRING_NOT_EQUAL_TO );
+    else if (!strncmp(ptr, ">=", 2)) ptr += 2, op_idx = GREATER_OR_EQUAL_TO;
+    else if (!strncmp(ptr, "<=", 2)) ptr += 2, op_idx = LESS_OR_EQUAL_TO;
+    else if (!strncmp(ptr, ">" , 1)) ptr += 1, op_idx = GREATER;
+    else if (!strncmp(ptr, "<" , 1)) ptr += 1, op_idx = LESS;
+    else {};
+
+    return op[op_idx](patterm[patterm_idx], (void*)ptr);
 }
 
+/* logic operation begin */
+int and(int a, int b) { return a && b; }
+int or (int a, int b) { return a || b; }
+/* logic operation  end  */
+
+///
+/// check where condition
+///
+int check_where_condition(User_t *user, WhereArgs_t *where_args) {
+    int (*op[])(int a, int b) = {and, or};
+    return op[where_args->where_logic_op](eval(user, where_args->where_condition1), eval(user, where_args->where_condition2));
+}
+
+
+void print_result(Table_t *user_table, Table_t *like_table, Command_t *cmd) {
+    for (size_t idx = 0; idx < user_table->len; idx++) {
+        if (cmd->cmd_args.sel_args.offset) {
+            cmd->cmd_args.sel_args.offset--;
+            continue;
+        }
+        if (!cmd->cmd_args.sel_args.limit)
+            break;
+        User_t *user = get_User(user_table, idx);
+        if (check_where_condition(user, &cmd->where_args))
+            print_user(user, &cmd->cmd_args.sel_args), cmd->cmd_args.sel_args.limit--;
+    }
+}
 ///
 /// This function received an output argument
 /// Return: category of the command
@@ -110,9 +163,9 @@ int parse_input(char *input, Command_t *cmd) {
 /// Handle built-in commands
 /// Return: command type
 ///
-void handle_builtin_cmd(Table_t *table, Command_t *cmd, State_t *state) {
+void handle_builtin_cmd(Table_t *user_table, Table_t *like_table, Command_t *cmd, State_t *state) {
     if (!strncmp(cmd->args[0], ".exit", 5)) {
-        archive_table(table);
+        archive_table(user_table);
         exit(0);
     } else if (!strncmp(cmd->args[0], ".output", 7)) {
         if (cmd->args_len == 2) {
@@ -131,58 +184,23 @@ void handle_builtin_cmd(Table_t *table, Command_t *cmd, State_t *state) {
         }
     } else if (!strncmp(cmd->args[0], ".load", 5)) {
         if (cmd->args_len == 2) {
-            load_table(table, cmd->args[1]);
+            load_table(user_table, cmd->args[1]);
         }
     } else if (!strncmp(cmd->args[0], ".help", 5)) {
         print_help_msg();
     }
 }
 
-///
-/// Handle query type commands
-/// Return: command type
-///
-int handle_query_cmd(Table_t *table, Command_t *cmd) {
-    if (!strncmp(cmd->args[0], "insert", 6)) {
-        handle_insert_cmd(table, cmd);
-        return INSERT_CMD;
-    } else if (!strncmp(cmd->args[0], "select", 6)) {
-        handle_select_cmd(table, cmd);
-        return SELECT_CMD;
-    } else {
-        return UNRECOG_CMD;
-    }
+void append_string(char **oriString, char *targetObj) {
+    size_t oriString_len = strlen(*oriString);
+    size_t targetObj_len = strlen( targetObj);
+    char *buf = (char*)malloc(sizeof(char) * (oriString_len + targetObj_len + 1));
+    memcpy(buf, *oriString, sizeof(char) * oriString_len);
+    free(*oriString);
+    memcpy(buf + oriString_len, targetObj, sizeof(char) * (targetObj_len + 1));
+    *oriString = buf;
 }
 
-///
-/// The return value is the number of rows insert into table
-/// If the insert operation success, then change the input arg
-/// `cmd->type` to INSERT_CMD
-///
-int handle_insert_cmd(Table_t *table, Command_t *cmd) {
-    int ret = 0;
-    User_t *user = command_to_User(cmd);
-    if (user) {
-        ret = add_User(table, user);
-        if (ret > 0) {
-            cmd->type = INSERT_CMD;
-        }
-    }
-    return ret;
-}
-
-///
-/// The return value is the number of rows select from table
-/// If the select operation success, then change the input arg
-/// `cmd->type` to SELECT_CMD
-///
-int handle_select_cmd(Table_t *table, Command_t *cmd) {
-    cmd->type = SELECT_CMD;
-    field_state_handler(cmd, 1);
-
-    print_users(table, NULL, 0, cmd);
-    return table->len;
-}
 
 ///
 /// Show the help messages

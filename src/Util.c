@@ -92,6 +92,8 @@ int parse_input(char *input, Command_t *cmd) {
     char *token;
     int idx;
     token = strtok(input, " ,\n");
+    if (!token)
+        return -1;
     for (idx = 0; strlen(cmd_list[idx].name) != 0; idx++) {
         if (!strncmp(token, cmd_list[idx].name, cmd_list[idx].len)) {
             cmd->type = cmd_list[idx].type;

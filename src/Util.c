@@ -9,6 +9,7 @@
 #include "Command.h"
 #include "Table.h"
 #include "QueryState.h"
+#include "Hash.h"
 
 ///
 /// Allocate State_t and initialize some attributes

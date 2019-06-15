@@ -12,7 +12,7 @@ int main(int argc, char **argv) {
     Command_t *cmd = new_Command();
     State_t *state = new_State();
     Table_t *user_table = NULL, *like_table = NULL;
-    hash_init();
+    hash_init(ID); hash_init(ID1); hash_init(ID2);
     int cmd_type;
     if (argc != 2) {
         user_table = new_Table(NULL, USER);

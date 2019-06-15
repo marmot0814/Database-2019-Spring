@@ -20,7 +20,6 @@ State_t* new_State() {
     return state;
 }
 
-
 ///
 /// Print shell prompt
 ///
@@ -242,9 +241,8 @@ void print_result(Table_t *user_table, Table_t *like_table, Command_t *cmd) {
             size_t idx;
             int limit = cmd->cmd_args.sel_args.limit;
             int offset = cmd->cmd_args.sel_args.offset;
-            if (offset == -1) {
+            if (offset == -1)
                 offset = 0;
-            }
             if (!strncmp(cmd->cmd_args.sel_args.fields[0], "sum", 3)
              || !strncmp(cmd->cmd_args.sel_args.fields[0], "avg", 3)
              || !strncmp(cmd->cmd_args.sel_args.fields[0], "count", 5)
@@ -253,8 +251,9 @@ void print_result(Table_t *user_table, Table_t *like_table, Command_t *cmd) {
                     return ;
                 print_aggre(user_table, like_table, cmd);
             } else {
+                if (limit == -1) limit = user_table->len;
                 for (idx = 0 ; idx < user_table->len ; idx++) {
-                    if (limit != -1 && limit == 0)
+                    if (limit == 0)
                         break;
                     if (!check_where_condition(get_User(user_table, idx), NULL, &(cmd->where_args)))
                         continue;
@@ -267,22 +266,45 @@ void print_result(Table_t *user_table, Table_t *like_table, Command_t *cmd) {
                 }
             }
         } else if (cmd->cmd_args.sel_args.table1 == 1) {
+            int limit = cmd->cmd_args.sel_args.limit;
+            int offset = cmd->cmd_args.sel_args.offset;
+            if (limit == -1) 
+                limit = like_table->len;
+            if (offset == -1)
+                offset = 0;
             for (size_t idx = 0; idx < like_table->len; idx++) {
-                if (cmd->cmd_args.sel_args.offset) {
-                    cmd->cmd_args.sel_args.offset--;
+                Like_t *like = get_Like(like_table, idx);
+                if (limit == 0)
+                    break;
+                if (!check_where_condition(NULL, like, &cmd->where_args))
+                    continue;
+                if (offset) {
+                    offset--;
                     continue;
                 }
-                if (!cmd->cmd_args.sel_args.limit)
-                    break;
-                Like_t *like = get_Like(like_table, idx);
-                if (check_where_condition(NULL, like, &cmd->where_args))
-                    print_like(like, &cmd->cmd_args.sel_args), cmd->cmd_args.sel_args.limit--;
+                print_like(like, &cmd->cmd_args.sel_args); limit--;
             }
-
         }
     } else {
-
         // join
+        int cnt = 0;
+        int limit = cmd->cmd_args.sel_args.limit;
+        int offset = cmd->cmd_args.sel_args.offset;
+        if (offset == -1)
+            offset = 0;
+        for (size_t idx = 0; idx < user_table->len; idx++) {
+            if (limit == 0)
+                break;
+            User_t *user = get_User(user_table, idx);
+            if (!check_where_condition(user, NULL, &cmd->where_args))
+                continue;
+            if (offset) {
+                offset--;
+                continue;
+            }
+            cnt += hash_get_value(cmd->cmd_args.sel_args.field_in_table2, user->id);
+        }
+        printf ("(%d)\n", cnt);
     }
 }
 ///

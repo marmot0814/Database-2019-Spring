@@ -129,7 +129,7 @@ int match_number(Table_t *table, Command_t *cmd) {
 }
 
 int check_primary_key(Table_t *table, int id) {
-    return hash_find(id);
+    return hash_find(ID, id);
 }
 
 int handle_update_cmd(Table_t *table, Command_t *cmd) {

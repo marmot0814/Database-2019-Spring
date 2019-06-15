@@ -40,7 +40,7 @@ int add_User(Table_t *table, User_t *user) {
     if (!table || !user) {
         return 0;
     }
-    if (hash_find(user->id)) return 0;
+    if (hash_find(ID, user->id)) return 0;
     /*
     // Check id doesn't exist in the table
     for (idx = 0; idx < table->len; idx++) {
@@ -71,7 +71,7 @@ int add_User(Table_t *table, User_t *user) {
     table->cache_map[idx] = 1;
     table->len++;
 
-    hash_insert(user->id);
+    hash_insert(ID, user->id);
     return 1;
 }
 
@@ -100,6 +100,9 @@ int add_Like(Table_t *table, Like_t *like) {
     memcpy((table->obj->likes)+idx, like, sizeof(Like_t));
     table->cache_map[idx] = 1;
     table->len++;
+
+    hash_add(ID1, like->id1);
+    hash_add(ID2, like->id2);
     return 1;
 }
 

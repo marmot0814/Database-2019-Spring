@@ -15,5 +15,6 @@ int parse_input(char *input, Command_t *cmd);
 void handle_builtin_cmd(Table_t *user_table, Table_t *like_table, Command_t *cmd, State_t *state);
 void print_help_msg();
 void append_string(char **string, char *targetObj);
+int check_where_condition(User_t *user, Like_t *like, WhereArgs_t *where_args);
 
 #endif

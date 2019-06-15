@@ -7,15 +7,15 @@
 
 int handle_query_cmd(Table_t *user_table, Table_t *like_table, Command_t *cmd) {
     if        (!strncmp(cmd->args[0], "select", 6)) {
-        handle_select_cmd(user_table, like_table, cmd);
+        return handle_select_cmd(user_table, like_table, cmd);
     } else if (!strncmp(cmd->args[0], "insert", 6)) {
-        handle_insert_cmd(user_table, like_table, cmd);
+        return handle_insert_cmd(user_table, like_table, cmd);
     } else if (!strncmp(cmd->args[0], "update", 6)) {
-
+        return handle_update_cmd(user_table, cmd);
     } else if (!strncmp(cmd->args[0], "delete", 6)) {
-
+        return handle_delete_cmd(user_table, cmd);
     }
-    return 1;
+    return UNRECOG_CMD;
 }
 
 
@@ -41,7 +41,7 @@ int handle_select_cmd(Table_t *user_table, Table_t *like_table, Command_t *cmd) 
     puts("");
     */
     print_result(user_table, like_table, cmd);
-    return 1;
+    return cmd->type;
 }
 
 void select_field_handler(Command_t *cmd, size_t arg_idx) {
@@ -49,7 +49,7 @@ void select_field_handler(Command_t *cmd, size_t arg_idx) {
     cmd->cmd_args.sel_args.fields_len = 0;
     cmd->cmd_args.sel_args.limit = -1;
     cmd->cmd_args.sel_args.offset = 0;
-    char* field_list[] = { "*", "id", "name", "email", "age", "" };
+    char* field_list[] = { "count", "sum", "avg", "*", "id", "name", "email", "age", "" };
     while (arg_idx < cmd->args_len) {
         for (size_t idx = 0; strlen(field_list[idx]); idx++) {
             if (!strncmp(cmd->args[arg_idx], field_list[idx], strlen(field_list[idx]))) {
@@ -85,23 +85,135 @@ int handle_insert_cmd(Table_t *user_table, Table_t *like_table, Command_t *cmd) 
                 cmd->type = INSERT_CMD;
         }
     }
-    return ret;
+    return cmd->type;
 }
 
 /* insert  end  */
 
 /* update begin */
-int handle_update_cmd(Table_t *user_table, Table_t *like_table, Command_t *cmd) {
+void update_user(User_t *user, UpdateArgs_t *upd_args) {
+    char *ptr = upd_args->set_condition;
+    if (!strncmp(ptr, "id", 2)) {
+        ptr += 3;
+        user->id = atoi(ptr);
+    } else if (!strncmp(ptr, "name", 4)) {
+        ptr += 5;
+        strcpy(user->name, ptr);
+    } else if (!strncmp(ptr, "email", 5)) {
+        ptr += 6;
+        strcpy(user->email, ptr);
+    } else if (!strncmp(ptr, "age", 3)) {
+        ptr += 4;
+        user->age = atoi(ptr);
+    }
+}
+
+void update_users(Table_t *table, Command_t *cmd) {
+    size_t idx;
+    for (idx = 0 ; idx < table->len ; idx++) {
+        if (!check_where_condition(get_User(table, idx), NULL, &(cmd->where_args)))
+            continue;
+        update_user(get_User(table, idx), &cmd->cmd_args.upd_args);
+    }
+}
+
+int match_number(Table_t *table, Command_t *cmd) {
+    int ret = 0; size_t idx;
+    for (idx = 0 ; idx < table->len ; idx++) {
+        if (!check_where_condition(get_User(table, idx), NULL, &(cmd->where_args)))
+            continue;
+        ret++;
+    }
+    return ret;
+}
+
+int check_primary_key(Table_t *table, int id) {
+    size_t idx;
+    for (idx = 0 ; idx < table->len ; idx++) {
+        if (get_User(table, idx)->id == id)
+            return 1;
+    }
+    return 0;
+}
+
+int handle_update_cmd(Table_t *table, Command_t *cmd) {
     cmd->type = UPDATE_CMD;
-    return 1;
+    update_field_state_handler(cmd, 1);
+    int ret = 0;
+    if (!strncmp(cmd->cmd_args.upd_args.set_condition, "id", 2)) {
+        int cnt = match_number(table, cmd);
+        if (cnt > 1)
+            return ret;
+        if (check_primary_key(table, atoi(cmd->cmd_args.upd_args.set_condition + 3)))
+            return ret;
+        update_users(table, cmd);
+    } else
+        update_users(table, cmd);
+    return ret;
+}
+
+void update_field_state_handler(Command_t *cmd, size_t arg_idx) {
+    cmd->cmd_args.upd_args.set_condition = strdup("");
+    cmd->where_args.where_condition1 = strdup("");
+    cmd->where_args.where_condition2 = strdup("");
+    cmd->where_args.where_logic_op = AND;
+
+    while (arg_idx < cmd->args_len) {
+        if (!strncmp(cmd->args[arg_idx], "user", 4))
+            arg_idx++;
+        else if (!strncmp(cmd->args[arg_idx], "set", 3)) {
+            set_state_handler(cmd, arg_idx + 1);
+            return ;
+        }
+    }
+    cmd->type = UNRECOG_CMD;
+    return ;
+}
+
+void set_state_handler(Command_t *cmd, size_t arg_idx) {
+    while (arg_idx < cmd->args_len) {
+        if (!strncmp(cmd->args[arg_idx], "where", 5))
+            return where_condition1_state_handler(cmd, arg_idx + 1);
+        else
+            append_string(&cmd->cmd_args.upd_args.set_condition, cmd->args[arg_idx++]);
+    }
 }
 
 /* update  end  */
 
 /* delete begin */
-int handle_delete_cmd(Table_t *user_table, Table_t *like_table, Command_t *cmd) {
+void delete_state_handler(Command_t *cmd, size_t arg_idx) {
+    cmd->where_args.where_condition1 = strdup("");
+    cmd->where_args.where_condition2 = strdup("");
+    cmd->where_args.where_logic_op = AND;
+
+    while (arg_idx < cmd->args_len) {
+        if (!strncmp(cmd->args[arg_idx], "from", 4)) {
+            arg_idx++;
+        } else if (!strncmp(cmd->args[arg_idx], "user", 4)) {
+            arg_idx++;
+        } else if (!strncmp(cmd->args[arg_idx], "where", 5)) {
+            return where_condition1_state_handler(cmd, arg_idx + 1);
+        }
+    }
+}
+
+void delete_users(Table_t *table, Command_t *cmd) {
+    size_t idx, cnt = 0;
+    for (idx = 0 ; idx < table->len ; idx++) {
+        if (!check_where_condition(get_User(table, idx), NULL, &(cmd->where_args))) {
+            memcpy(table->obj->users + cnt, get_User(table, idx), sizeof(User_t));
+            cnt++;
+        }
+    }
+    table->len = cnt;
+}
+
+int handle_delete_cmd(Table_t *table, Command_t *cmd) {
     cmd->type = DELETE_CMD;
-    return 1;
+    delete_state_handler(cmd, 1);
+    delete_users(table, cmd);
+    return cmd->type;
 }
 
 /* delete  end  */
@@ -110,6 +222,7 @@ void table_state_handler(Command_t *cmd, size_t arg_idx) {
     if (arg_idx < cmd->args_len) {
         if        (!strncmp(cmd->args[arg_idx], "user", 4)) {
             cmd->cmd_args.sel_args.table1 = USER;
+            cmd->cmd_args.sel_args.table2 = -1;
         } else if (!strncmp(cmd->args[arg_idx], "like", 4)) {
             cmd->cmd_args.sel_args.table1 = LIKE;
             cmd->cmd_args.sel_args.table2 = -1;

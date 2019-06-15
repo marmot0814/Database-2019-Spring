@@ -1,0 +1,3 @@
+insert into user 1 2 3 4
+insert into user 2 3 4 5
+select count(*) from user

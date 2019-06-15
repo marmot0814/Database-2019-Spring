@@ -5,13 +5,14 @@
 #include "QueryState.h"
 #include "Util.h"
 #include "Table.h"
-
+#include "Hash.h"
 
 int main(int argc, char **argv) {
     InputBuffer_t *input_buffer = new_InputBuffer();
     Command_t *cmd = new_Command();
     State_t *state = new_State();
     Table_t *user_table = NULL, *like_table = NULL;
+    hash_init();
     int cmd_type;
     if (argc != 2) {
         user_table = new_Table(NULL, USER);

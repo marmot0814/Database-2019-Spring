@@ -20,6 +20,7 @@ State_t* new_State() {
     return state;
 }
 
+
 ///
 /// Print shell prompt
 ///

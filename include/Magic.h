@@ -15,6 +15,7 @@ void pull(Node *u);
 void split(Node *T, int k, Node **a, Node **b);
 Node* merge(Node *a, Node *b);
 int rank(Node *u, int v);
+int find(Node *u, int v);
 void print(Node *u);
 void insert(int idx, int v, int addr);
 

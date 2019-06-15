@@ -2,6 +2,8 @@
 #include <string.h>
 #include <sys/stat.h>
 #include "Table.h"
+#include "Magic.h"
+#include "Hash.h"
 
 ///
 /// Allocate a Table_t struct, then initialize some attributes, and
@@ -35,17 +37,19 @@ Table_t *new_Table(char *file_name, int type) {
 ///
 int add_User(Table_t *table, User_t *user) {
     size_t idx;
-    User_t *usr_ptr;
     if (!table || !user) {
         return 0;
     }
+    if (hash_find(user->id)) return 0;
+    /*
     // Check id doesn't exist in the table
     for (idx = 0; idx < table->len; idx++) {
-        usr_ptr = get_User(table, idx);
+        User_t *usr_ptr = get_User(table, idx);
         if (usr_ptr->id == user->id) {
             return 0;
         }
     }
+    */
     if (table->len == table->capacity) {
         User_t *new_user_buf = (User_t*)malloc(sizeof(User_t)*(table->len+EXT_LEN));
         unsigned char *new_cache_buf = (unsigned char *)malloc(sizeof(unsigned char)*(table->len+EXT_LEN));
@@ -66,6 +70,8 @@ int add_User(Table_t *table, User_t *user) {
     memcpy((table->obj->users)+idx, user, sizeof(User_t));
     table->cache_map[idx] = 1;
     table->len++;
+
+    hash_insert(user->id);
     return 1;
 }
 

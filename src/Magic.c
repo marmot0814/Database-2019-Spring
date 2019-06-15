@@ -56,6 +56,10 @@ int rank(Node *u, int v) {
     if (!u) return 0;
     return v < u->v ? rank(u->l, v) : size(u->l) + 1 + rank(u->r, v);
 }
+int find(Node *u, int v) {
+    if (!u) return 0;
+    return v == u->v ? 1 : find(u->l, v) || find(u->r, v);
+}
 
 void print(Node *u) {
     if (!u) return ;

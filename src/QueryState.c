@@ -4,6 +4,7 @@
 #include "QueryState.h"
 #include "Util.h"
 #include "Table.h"
+#include "Hash.h"
 
 int handle_query_cmd(Table_t *user_table, Table_t *like_table, Command_t *cmd) {
     if        (!strncmp(cmd->args[0], "select", 6)) {
@@ -128,12 +129,7 @@ int match_number(Table_t *table, Command_t *cmd) {
 }
 
 int check_primary_key(Table_t *table, int id) {
-    size_t idx;
-    for (idx = 0 ; idx < table->len ; idx++) {
-        if (get_User(table, idx)->id == id)
-            return 1;
-    }
-    return 0;
+    return hash_find(id);
 }
 
 int handle_update_cmd(Table_t *table, Command_t *cmd) {
@@ -149,6 +145,7 @@ int handle_update_cmd(Table_t *table, Command_t *cmd) {
         update_users(table, cmd);
     } else
         update_users(table, cmd);
+    hash_maintain(table);
     return ret;
 }
 
@@ -213,6 +210,7 @@ int handle_delete_cmd(Table_t *table, Command_t *cmd) {
     cmd->type = DELETE_CMD;
     delete_state_handler(cmd, 1);
     delete_users(table, cmd);
+    hash_maintain(table);
     return cmd->type;
 }
 

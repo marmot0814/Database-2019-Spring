@@ -2,7 +2,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include "Table.h"
-#include "Magic.h"
 #include "Hash.h"
 
 ///

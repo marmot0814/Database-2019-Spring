@@ -123,8 +123,8 @@ int eval(User_t *user, Like_t *like, char *condition) {
     else if (!strncmp(ptr, "age"  , 3)) ptr += 3, patterm_idx = AGE;
     else {};
 
-         if (!strncmp(ptr, "=" , 1)) ptr += 1, op_idx = ( patterm_idx == ID || patterm_idx == AGE ? EQUAL_TO : STRING_EQUAL_TO );
-    else if (!strncmp(ptr, "!=", 2)) ptr += 2, op_idx = ( patterm_idx == ID || patterm_idx == AGE ? NOT_EQUAL_TO : STRING_NOT_EQUAL_TO );
+         if (!strncmp(ptr, "=" , 1)) ptr += 1, op_idx = ( patterm_idx == ID1 || patterm_idx == ID2 || patterm_idx == ID || patterm_idx == AGE ? EQUAL_TO : STRING_EQUAL_TO );
+    else if (!strncmp(ptr, "!=", 2)) ptr += 2, op_idx = ( patterm_idx == ID1 || patterm_idx == ID2 || patterm_idx == ID || patterm_idx == AGE ? NOT_EQUAL_TO : STRING_NOT_EQUAL_TO );
     else if (!strncmp(ptr, ">=", 2)) ptr += 2, op_idx = GREATER_OR_EQUAL_TO;
     else if (!strncmp(ptr, "<=", 2)) ptr += 2, op_idx = LESS_OR_EQUAL_TO;
     else if (!strncmp(ptr, ">" , 1)) ptr += 1, op_idx = GREATER;
@@ -142,45 +142,89 @@ int or_func (int a, int b) { return a || b; }
 /* aggre function begin */
 int sum(Table_t *user_table, Table_t *like_table, Command_t *cmd, size_t patterm_idx) {
     size_t idx; int ret = 0;
-    for (idx = 0 ; idx < user_table->len ; idx++) {
-        if (!check_where_condition(get_User(user_table, idx), NULL, &cmd->where_args))
-            continue;
-        int* patterm[] = {
-            (int*)&(get_User(user_table, idx)->id),
-            NULL,
-            NULL,
-            (int*)&(get_User(user_table, idx)->age)
-        };
-        ret += *patterm[patterm_idx];
+    if (user_table) {
+        for (idx = 0 ; idx < user_table->len ; idx++) {
+            if (!check_where_condition(get_User(user_table, idx), NULL, &cmd->where_args))
+                continue;
+            int* patterm[] = {
+                (int*)&(get_User(user_table, idx)->id),
+                NULL,
+                NULL,
+                (int*)&(get_User(user_table, idx)->age)
+            };
+            ret += *patterm[patterm_idx];
+        }
+        return ret;
+    } else if (like_table) {
+        for (idx = 0 ; idx < like_table->len ; idx++) {
+            if (!check_where_condition(NULL, get_Like(like_table, idx), &cmd->where_args))
+                continue;
+            int* patterm[] = {
+                NULL,
+                NULL,
+                NULL,
+                NULL,
+                like_table ? (int*)&(get_Like(like_table, idx)->id1) : NULL,
+                like_table ? (int*)&(get_Like(like_table, idx)->id2) : NULL,
+            };
+            ret += *patterm[patterm_idx];
+        }
+        return ret;
     }
-    return ret;
 }
 
 int count(Table_t *user_table, Table_t *like_table, Command_t *cmd, size_t patterm_idx) {
     size_t idx; int ret = 0;
-    for (idx = 0 ; idx < user_table->len ; idx++) {
-        if (!check_where_condition(get_User(user_table, idx), NULL, &cmd->where_args))
-            continue;
-        ret++;
+    if (user_table) {
+        for (idx = 0 ; idx < user_table->len ; idx++) {
+            if (!check_where_condition(get_User(user_table, idx), NULL, &cmd->where_args))
+                continue;
+            ret++;
+        }
+        return ret;
+    } else if (like_table) {
+        for (idx = 0 ; idx < like_table->len ; idx++) {
+            if (!check_where_condition(NULL, get_Like(like_table, idx), &cmd->where_args))
+                continue;
+            ret++;
+        }
+        return ret;
     }
-    return ret;
 }
 
 double avg(Table_t *user_table, Table_t *like_table, Command_t *cmd, size_t patterm_idx) {
     size_t idx; int sum = 0, cnt = 0;
-    for (idx = 0 ; idx < user_table->len ; idx++) {
-        if (!check_where_condition(get_User(user_table, idx), NULL, &cmd->where_args))
-            continue;
-        int* patterm[] = {
-            (int*)&(get_User(user_table, idx)->id),
-            NULL,
-            NULL,
-            (int*)&(get_User(user_table, idx)->age)
-        };
-        sum += *patterm[patterm_idx];
-        cnt++;
+    if (user_table) {
+        for (idx = 0 ; idx < user_table->len ; idx++) {
+            if (!check_where_condition(get_User(user_table, idx), NULL, &cmd->where_args))
+                continue;
+            int* patterm[] = {
+                user_table ? (int*)&(get_User(user_table, idx)->id) : NULL,
+                NULL,
+                NULL,
+                user_table ? (int*)&(get_User(user_table, idx)->age) : NULL,
+            };
+            sum += *patterm[patterm_idx];
+            cnt++;
+        }
+        return cnt ? (double)sum / cnt : 0;
+    } else if (like_table) {
+        for (idx = 0 ; idx < like_table->len ; idx++) {
+            if (!check_where_condition(NULL, get_Like(like_table, idx), &cmd->where_args))
+                continue;
+            int* patterm[] = {
+                NULL,
+                NULL,
+                NULL,
+                NULL,
+                like_table ? (int*)&(get_Like(like_table, idx)->id1) : NULL,
+                like_table ? (int*)&(get_Like(like_table, idx)->id2) : NULL
+            };
+            sum += *patterm[patterm_idx];
+            cnt++;
+        }
+        return cnt ? (double)sum / cnt : 0;
     }
-    return cnt ? (double)sum / cnt : 0;
 }
 
 /* aggre function  end  */
@@ -250,7 +294,7 @@ void print_result(Table_t *user_table, Table_t *like_table, Command_t *cmd) {
             ) {
                 if (limit == 0 || offset > 0)
                     return ;
-                print_aggre(user_table, like_table, cmd);
+                print_aggre(user_table, NULL, cmd);
             } else {
                 if (limit == -1) limit = user_table->len;
                 for (idx = 0 ; idx < user_table->len ; idx++) {
@@ -273,18 +317,29 @@ void print_result(Table_t *user_table, Table_t *like_table, Command_t *cmd) {
                 limit = like_table->len;
             if (offset == -1)
                 offset = 0;
-            for (size_t idx = 0; idx < like_table->len; idx++) {
-                Like_t *like = get_Like(like_table, idx);
-                if (limit == 0)
-                    break;
-                if (!check_where_condition(NULL, like, &cmd->where_args))
-                    continue;
-                if (offset) {
-                    offset--;
-                    continue;
+            if (!strncmp(cmd->cmd_args.sel_args.fields[0], "sum", 3)
+             || !strncmp(cmd->cmd_args.sel_args.fields[0], "avg", 3)
+             || !strncmp(cmd->cmd_args.sel_args.fields[0], "count", 5)
+            ) {
+                if (limit == 0 || offset > 0)
+                    return ;
+                print_aggre(NULL, like_table, cmd);
+            } else {
+                if (limit == -1) limit = like_table->len;
+                for (size_t idx = 0; idx < like_table->len; idx++) {
+                    Like_t *like = get_Like(like_table, idx);
+                    if (limit == 0)
+                        break;
+                    if (!check_where_condition(NULL, like, &cmd->where_args))
+                        continue;
+                    if (offset) {
+                        offset--;
+                        continue;
+                    }
+                    print_like(like, &cmd->cmd_args.sel_args); limit--;
+                    limit--;
                 }
-                print_like(like, &cmd->cmd_args.sel_args); limit--;
-            }
+            }   
         }
     } else {
         // join

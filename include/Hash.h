@@ -2,12 +2,11 @@
 #define HASH_H
 
 #include "Table.h"
+#include <unordered_map>
+using namespace std;
 
-typedef struct Hash_t {
-    int key, value;
-} Hash;
-#define HASH_SIZE 400000
-extern Hash HT[][HASH_SIZE];
+extern unordered_map<long long, long long> HT[6];
+
 void hash_init(int idx);
 int hash_func(long long key, long long i);
 void hash_insert(int idx, int key);

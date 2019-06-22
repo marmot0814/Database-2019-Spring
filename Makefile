@@ -1,5 +1,5 @@
-CC=gcc
-CFLAGS=-Iinclude -Wall -g
+CC=g++
+CFLAGS=-Iinclude -Wall -g -Ofast -std=c++17
 TARGET=shell
 DEPS=$(wildcard *.h)
 

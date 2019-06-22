@@ -76,14 +76,14 @@ void print_like(Like_t *like, SelectArgs_t *sel_args) {
 }
 
 /* operation begin */
-int equal_to            (void *patterm, void *val) { return *((int*)patterm) == atoi((char*)val); }
-int not_equal_to        (void *patterm, void *val) { return *((int*)patterm) != atoi((char*)val); }
-int greater             (void *patterm, void *val) { return *((int*)patterm) >  atoi((char*)val); }
-int less                (void *patterm, void *val) { return *((int*)patterm) <  atoi((char*)val); }
-int greater_or_equal_to (void *patterm, void *val) { return *((int*)patterm) >= atoi((char*)val); }
-int less_or_equal_to    (void *patterm, void *val) { return *((int*)patterm) <= atoi((char*)val); }
-int string_equal_to     (void *patterm, void *val) { return strcmp((char*)patterm, (char*)val) == 0; }
-int string_not_equal_to (void *patterm, void *val) { return strcmp((char*)patterm, (char*)val) != 0; }
+int op_equal_to            (void *patterm, void *val) { return *((int*)patterm) == atoi((char*)val); }
+int op_not_equal_to        (void *patterm, void *val) { return *((int*)patterm) != atoi((char*)val); }
+int op_greater             (void *patterm, void *val) { return *((int*)patterm) >  atoi((char*)val); }
+int op_less                (void *patterm, void *val) { return *((int*)patterm) <  atoi((char*)val); }
+int op_greater_or_equal_to (void *patterm, void *val) { return *((int*)patterm) >= atoi((char*)val); }
+int op_less_or_equal_to    (void *patterm, void *val) { return *((int*)patterm) <= atoi((char*)val); }
+int op_string_equal_to     (void *patterm, void *val) { return strcmp((char*)patterm, (char*)val) == 0; }
+int op_string_not_equal_to (void *patterm, void *val) { return strcmp((char*)patterm, (char*)val) != 0; }
 /* operation  end  */
 
 ///
@@ -103,14 +103,14 @@ int eval(User_t *user, Like_t *like, char *condition) {
     size_t patterm_idx;
 
     int (*op[])(void* patterm, void* val) = {
-        equal_to, 
-        not_equal_to, 
-        greater, 
-        less, 
-        greater_or_equal_to, 
-        less_or_equal_to, 
-        string_equal_to, 
-        string_not_equal_to
+        op_equal_to, 
+        op_not_equal_to, 
+        op_greater, 
+        op_less, 
+        op_greater_or_equal_to, 
+        op_less_or_equal_to, 
+        op_string_equal_to, 
+        op_string_not_equal_to
     };
     size_t op_idx = 0;
 
@@ -135,8 +135,8 @@ int eval(User_t *user, Like_t *like, char *condition) {
 }
 
 /* logic operation begin */
-int and(int a, int b) { return a && b; }
-int or (int a, int b) { return a || b; }
+int and_func(int a, int b) { return a && b; }
+int or_func (int a, int b) { return a || b; }
 /* logic operation  end  */
 
 /* aggre function begin */
@@ -231,7 +231,7 @@ void print_aggre(Table_t *user_table, Table_t *like_table, Command_t *cmd) {
 /// check where condition
 ///
 int check_where_condition(User_t *user, Like_t *like, WhereArgs_t *where_args) {
-    int (*op[])(int a, int b) = {and, or};
+    int (*op[])(int a, int b) = {and_func, or_func};
     return op[where_args->where_logic_op](eval(user, like, where_args->where_condition1), eval(user, like, where_args->where_condition2));
 }
 

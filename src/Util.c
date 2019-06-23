@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <iostream>
 #include <stdio_ext.h>
 #include <stdlib.h>
 #include <string.h>
@@ -276,13 +277,14 @@ void print_aggre(Table_t *user_table, Table_t *like_table, Command_t *cmd) {
 ///
 int check_where_condition(User_t *user, Like_t *like, WhereArgs_t *where_args) {
     int (*op[])(int a, int b) = {and_func, or_func};
+
     return op[where_args->where_logic_op](eval(user, like, where_args->where_condition1), eval(user, like, where_args->where_condition2));
 }
 
 
 void print_result(Table_t *user_table, Table_t *like_table, Command_t *cmd) {
     if (cmd->cmd_args.sel_args.table2 == -1) {
-        if (cmd->cmd_args.sel_args.table1 == 0) {
+        if (cmd->cmd_args.sel_args.table1 == USER) {
             size_t idx;
             int limit = cmd->cmd_args.sel_args.limit;
             int offset = cmd->cmd_args.sel_args.offset;
@@ -310,11 +312,9 @@ void print_result(Table_t *user_table, Table_t *like_table, Command_t *cmd) {
                     limit--;
                 }
             }
-        } else if (cmd->cmd_args.sel_args.table1 == 1) {
+        } else if (cmd->cmd_args.sel_args.table1 == LIKE) {
             int limit = cmd->cmd_args.sel_args.limit;
             int offset = cmd->cmd_args.sel_args.offset;
-            if (limit == -1) 
-                limit = like_table->len;
             if (offset == -1)
                 offset = 0;
             if (!strncmp(cmd->cmd_args.sel_args.fields[0], "sum", 3)
@@ -336,7 +336,7 @@ void print_result(Table_t *user_table, Table_t *like_table, Command_t *cmd) {
                         offset--;
                         continue;
                     }
-                    print_like(like, &cmd->cmd_args.sel_args); limit--;
+                    print_like(like, &cmd->cmd_args.sel_args); 
                     limit--;
                 }
             }   

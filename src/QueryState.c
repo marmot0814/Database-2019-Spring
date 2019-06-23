@@ -25,6 +25,7 @@ int handle_select_cmd(Table_t *user_table, Table_t *like_table, Command_t *cmd) 
     cmd->type = SELECT_CMD;
     cmd->where_args.where_condition1 = strdup("");
     cmd->where_args.where_condition2 = strdup("");
+    cmd->where_args.where_logic_op = 0;
     select_field_handler(cmd, 1);
     /*
     puts("");
@@ -129,6 +130,7 @@ int match_number(Table_t *table, Command_t *cmd) {
 }
 
 int check_primary_key(Table_t *table, int id) {
+    return 0;
     return hash_find(ID, id);
 }
 

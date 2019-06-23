@@ -5,7 +5,7 @@
 #include "User.h"
 #include "Like.h"
 
-#define INIT_TABLE_SIZE 10000
+#define INIT_TABLE_SIZE 500000
 #define EXT_LEN 500
 
 enum {
